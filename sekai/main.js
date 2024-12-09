@@ -1,26 +1,59 @@
-var y, yAxis, svg, tooltip;
+var y, yAxis, svg, tooltip, yAxisLabel, x, selectedValue;
 
-d3.csv("cutoffs.csv").then(function (csv) {
-    for (var i = 0; i < csv.length; ++i) {
-        var eventId = csv[i]["Event ID"];
-        var eventName = csv[i]["Event Name"];
-        var focusUnit = csv[i]["Focus Unit"];
-        var t1 = csv[i]["T1"];
-        var t10 = csv[i]["T10"];
-        var t20 = csv[i]["T20"];
-        var t30 = csv[i]["T30"];
-        var t40 = csv[i]["T40"];
-        var t50 = csv[i]["T50"];
-        var t100 = csv[i]["T100"];
-        var t200 = csv[i]["T200"];
-        var t300 = csv[i]["T300"];
-        var t400 = csv[i]["T400"];
-        var t500 = csv[i]["T500"];
-        var t1000 = csv[i]["T1000"];
+function updateChart(data) {
+    selectedValue = d3.select("#valueSelect").property("value");
+    var excludeWorldLink = d3.select("#excludeCheckbox").property("checked");
+
+    // Filter data based on checkbox
+    var worldLinkIds = ["112", "112-1", "112-2", "112-3", "112-4"];
+
+    var filteredData = data;
+    if (excludeWorldLink) {
+        filteredData = data.filter(function (d) {
+            return !worldLinkIds.includes(d["Event ID"]);
+        });
     }
-}).catch(function (error) {
-    console.error("Error loading CSV file:", error);
-});
+
+    // Update Y axis domain
+    y.domain([0, d3.max(filteredData, function (d) { return d[selectedValue]; })]);
+    yAxis.call(d3.axisLeft(y));
+
+    // Update dots
+    var circles = svg.selectAll("circle")
+        .data(filteredData);
+
+    circles.enter()
+        .append("circle")
+        .merge(circles)
+        .attr("cx", function (d) { return x(d["Focus Unit"]); })
+        .attr("cy", function (d) { return y(d[selectedValue]); })
+        .attr("r", 5)
+        .style("fill", function (d) { return colorMapping[d["Focus Unit"]]; })
+        .style("stroke", "black")
+        .style("stroke-width", 1)
+        .on("mouseover", function (event, d) {
+            tooltip.style("display", "block");
+            tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
+                "Event ID: " + d["Event ID"] + "<br>" +
+                "Event Name: " + d["Event Name"] + "<br>" +
+                selectedValue + ": " + d[selectedValue])
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mousemove", function (event) {
+            tooltip.style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        })
+        .on("mouseout", function () {
+            tooltip.style("display", "none");
+        });
+
+    circles.exit().remove();
+
+    // Update Y axis label
+    yAxisLabel.text(selectedValue);
+}
+
 
 d3.csv("cutoffs.csv").then(function (data) {
     // Parse the data
@@ -100,7 +133,7 @@ d3.csv("cutoffs.csv").then(function (data) {
     };
 
     // X axis
-    var x = d3.scalePoint()
+    x = d3.scalePoint()
         .domain(focusUnitOrder)
         .range([20, width]); // Added padding to the range
 
@@ -135,7 +168,7 @@ d3.csv("cutoffs.csv").then(function (data) {
         .enter()
         .append("circle")
         .attr("cx", function (d) { return x(d["Focus Unit"]); })
-        .attr("cy", function (d) { return y(d["T100"]); })
+        .attr("cy", function (d) { return y(d[selectedValue]); }) // Use selectedValue here
         .attr("r", 5)
         .style("fill", function (d) { return colorMapping[d["Focus Unit"]]; })
         .style("stroke", "black")
@@ -145,7 +178,7 @@ d3.csv("cutoffs.csv").then(function (data) {
             tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
                 "Event ID: " + d["Event ID"] + "<br>" +
                 "Event Name: " + d["Event Name"] + "<br>" +
-                "T100: " + d["T100"])
+                selectedValue + ": " + d[selectedValue]) // Use selectedValue here
                 .style("left", (event.pageX + 10) + "px")
                 .style("top", (event.pageY - 10) + "px");
         })
@@ -165,12 +198,12 @@ d3.csv("cutoffs.csv").then(function (data) {
         .text("Focus Unit");
 
     // Y axis label
-    svg.append("text")
+    yAxisLabel = svg.append("text")
         .attr("text-anchor", "end")
         .attr("x", -height / 2 + margin.top)
         .attr("y", -margin.left + 20)
         .attr("transform", "rotate(-90)")
-        .text("T100");
+        .text("Cutoff"); 
 
     var dropdown = d3.select("body").append("select")
         .attr("id", "valueSelect")
@@ -185,31 +218,19 @@ d3.csv("cutoffs.csv").then(function (data) {
         .text(function (d) { return d; })
         .attr("value", function (d) { return d; });
 
+    // Add checkbox for excluding World Link Event
+    d3.select("body").append("label")
+        .text("Exclude World Link Event")
+        .style("margin-left", "20px")
+        .append("input")
+        .attr("type", "checkbox")
+        .attr("id", "excludeCheckbox")
+        .on("change", function () {
+            updateChart(data);
+        });
+
+    // Initial call to update the chart
     updateChart(data);
 }).catch(function (error) {
     console.error("Error loading CSV file:", error);
 });
-
-function updateChart(data) {
-    var selectedValue = d3.select("#valueSelect").property("value");
-
-    // Update Y axis domain
-    y.domain([0, d3.max(data, function (d) { return d[selectedValue]; })]);
-    yAxis.call(d3.axisLeft(y));
-
-    // Update dots
-    svg.selectAll("circle")
-        .attr("cy", function (d) { return y(d[selectedValue]); });
-
-    // Update tooltip
-    svg.selectAll("circle")
-        .on("mouseover", function (event, d) {
-            tooltip.style("display", "block");
-            tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
-                "Event ID: " + d["Event ID"] + "<br>" +
-                "Event Name: " + d["Event Name"] + "<br>" +
-                selectedValue + ": " + d[selectedValue])
-                .style("left", (event.pageX + 10) + "px")
-                .style("top", (event.pageY - 10) + "px");
-        });
-}
