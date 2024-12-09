@@ -1,12 +1,11 @@
 var y, yAxis, svg, tooltip, yAxisLabel, x, selectedValue;
+var worldLinkIds = ["112", "112-1", "112-2", "112-3", "112-4"];
 
 function updateChart(data) {
     selectedValue = d3.select("#valueSelect").property("value");
     var excludeWorldLink = d3.select("#excludeCheckbox").property("checked");
 
     // Filter data based on checkbox
-    var worldLinkIds = ["112", "112-1", "112-2", "112-3", "112-4"];
-
     var filteredData = data;
     if (excludeWorldLink) {
         filteredData = data.filter(function (d) {
@@ -33,10 +32,11 @@ function updateChart(data) {
         .style("stroke-width", 1)
         .on("mouseover", function (event, d) {
             tooltip.style("display", "block");
+            var value = d[selectedValue] === 0 ? "Unknown" : d[selectedValue];
             tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
                 "Event ID: " + d["Event ID"] + "<br>" +
                 "Event Name: " + d["Event Name"] + "<br>" +
-                selectedValue + ": " + d[selectedValue])
+                selectedValue + ": " + value)
                 .style("left", (event.pageX + 10) + "px")
                 .style("top", (event.pageY - 10) + "px");
         })
@@ -53,7 +53,6 @@ function updateChart(data) {
     // Update Y axis label
     yAxisLabel.text(selectedValue);
 }
-
 
 d3.csv("cutoffs.csv").then(function (data) {
     // Parse the data
@@ -175,10 +174,11 @@ d3.csv("cutoffs.csv").then(function (data) {
         .style("stroke-width", 1)
         .on("mouseover", function (event, d) {
             tooltip.style("display", "block");
+            var value = d[selectedValue] === 0 ? "Unknown" : d[selectedValue];
             tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
                 "Event ID: " + d["Event ID"] + "<br>" +
                 "Event Name: " + d["Event Name"] + "<br>" +
-                selectedValue + ": " + d[selectedValue]) // Use selectedValue here
+                selectedValue + ": " + value) // Use selectedValue here
                 .style("left", (event.pageX + 10) + "px")
                 .style("top", (event.pageY - 10) + "px");
         })
@@ -203,7 +203,7 @@ d3.csv("cutoffs.csv").then(function (data) {
         .attr("x", -height / 2 + margin.top)
         .attr("y", -margin.left + 20)
         .attr("transform", "rotate(-90)")
-        .text("Cutoff"); 
+        .text("Cutoff Points");
 
     var dropdown = d3.select("body").append("select")
         .attr("id", "valueSelect")
