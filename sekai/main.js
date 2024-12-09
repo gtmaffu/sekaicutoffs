@@ -1,3 +1,5 @@
+var y, yAxis, svg, tooltip;
+
 d3.csv("cutoffs.csv").then(function (csv) {
     for (var i = 0; i < csv.length; ++i) {
         var eventId = csv[i]["Event ID"];
@@ -15,24 +17,6 @@ d3.csv("cutoffs.csv").then(function (csv) {
         var t400 = csv[i]["T400"];
         var t500 = csv[i]["T500"];
         var t1000 = csv[i]["T1000"];
-
-        console.log({
-            "Event ID": eventId,
-            "Event Name": eventName,
-            "Focus Unit": focusUnit,
-            "T1": t1,
-            "T10": t10,
-            "T20": t20,
-            "T30": t30,
-            "T40": t40,
-            "T50": t50,
-            "T100": t100,
-            "T200": t200,
-            "T300": t300,
-            "T400": t400,
-            "T500": t500,
-            "T1000": t1000
-        });
     }
 }).catch(function (error) {
     console.error("Error loading CSV file:", error);
@@ -41,14 +25,25 @@ d3.csv("cutoffs.csv").then(function (csv) {
 d3.csv("cutoffs.csv").then(function (data) {
     // Parse the data
     data.forEach(function (d) {
+        d["T1"] = +d["T1"].replace(/,/g, '');
+        d["T10"] = +d["T10"].replace(/,/g, '');
+        d["T20"] = +d["T20"].replace(/,/g, '');
+        d["T30"] = +d["T30"].replace(/,/g, '');
+        d["T40"] = +d["T40"].replace(/,/g, '');
+        d["T50"] = +d["T50"].replace(/,/g, '');
         d["T100"] = +d["T100"].replace(/,/g, '');
+        d["T200"] = +d["T200"].replace(/,/g, '');
+        d["T300"] = +d["T300"].replace(/,/g, '');
+        d["T400"] = +d["T400"].replace(/,/g, '');
+        d["T500"] = +d["T500"].replace(/,/g, '');
+        d["T1000"] = +d["T1000"].replace(/,/g, '');
     });
 
     var margin = { top: 20, right: 30, bottom: 100, left: 90 },
         width = 900 - margin.left - margin.right,
         height = 800 - margin.top - margin.bottom;
 
-    var svg = d3.select("body").append("svg")
+    svg = d3.select("body").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
         .append("g")
@@ -117,15 +112,14 @@ d3.csv("cutoffs.csv").then(function (data) {
         .style("text-anchor", "end");
 
     // Y axis
-    var y = d3.scaleLinear()
-        .domain([0, d3.max(data, function (d) { return d["T100"]; })])
+    y = d3.scaleLinear()
         .range([height, 0]);
 
-    svg.append("g")
-        .call(d3.axisLeft(y));
+    yAxis = svg.append("g")
+        .attr("class", "y axis");
 
     // Event tooltip
-    var tooltip = d3.select("body").append("div")
+    tooltip = d3.select("body").append("div")
         .style("position", "absolute")
         .style("background-color", "white")
         .style("border", "solid")
@@ -133,7 +127,6 @@ d3.csv("cutoffs.csv").then(function (data) {
         .style("border-radius", "5px")
         .style("padding", "10px")
         .style("display", "none");
-
 
     // Add dots
     svg.append('g')
@@ -178,6 +171,45 @@ d3.csv("cutoffs.csv").then(function (data) {
         .attr("y", -margin.left + 20)
         .attr("transform", "rotate(-90)")
         .text("T100");
+
+    var dropdown = d3.select("body").append("select")
+        .attr("id", "valueSelect")
+        .on("change", function () {
+            updateChart(data);
+        });
+
+    dropdown.selectAll("option")
+        .data(["T1", "T10", "T20", "T30", "T40", "T50", "T100", "T200", "T300", "T400", "T500", "T1000"])
+        .enter()
+        .append("option")
+        .text(function (d) { return d; })
+        .attr("value", function (d) { return d; });
+
+    updateChart(data);
 }).catch(function (error) {
     console.error("Error loading CSV file:", error);
 });
+
+function updateChart(data) {
+    var selectedValue = d3.select("#valueSelect").property("value");
+
+    // Update Y axis domain
+    y.domain([0, d3.max(data, function (d) { return d[selectedValue]; })]);
+    yAxis.call(d3.axisLeft(y));
+
+    // Update dots
+    svg.selectAll("circle")
+        .attr("cy", function (d) { return y(d[selectedValue]); });
+
+    // Update tooltip
+    svg.selectAll("circle")
+        .on("mouseover", function (event, d) {
+            tooltip.style("display", "block");
+            tooltip.html("Focus Unit: " + d["Focus Unit"] + "<br>" +
+                "Event ID: " + d["Event ID"] + "<br>" +
+                "Event Name: " + d["Event Name"] + "<br>" +
+                selectedValue + ": " + d[selectedValue])
+                .style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 10) + "px");
+        });
+}
