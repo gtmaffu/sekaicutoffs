@@ -48,7 +48,7 @@ function updateChart(data) {
             tooltip.style("display", "none");
         });
 
-    circles.exit().remove();
+    circles.exit().remove(); 
 
     // Update Y axis label
     yAxisLabel.text(selectedValue);
